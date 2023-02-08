@@ -1,1 +1,24 @@
-test
+<html>
+<head>
+  <title>INFO 4310 Homework 1 </title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/topojson.v3.min.js"></script>
+</head>
+
+<body>
+    <h1> Trees in San Francisco </h1>
+    <svg id="vis1" width="800" height="500"></svg>
+    <script>
+
+        const createVis = async function() {
+            let tree_data = await d3.csv("Street_Tree_List-2022-01-30_FILTERED.csv");
+            console.log(tree_data);
+
+        }
+
+        createVis();
+    </script>
+
+
+</body>
+</html>
