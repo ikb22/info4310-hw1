@@ -25,6 +25,9 @@
     h3, h4{
         font-weight: normal;
     }
+    h3{
+        text-decoration: underline;
+    }
     .side{
         display: flex;
         direction: column;
@@ -42,7 +45,7 @@
 </head>
 
 <body>
-    <h1> Visualizating the Most Common Tree Species in San Francisco </h1>
+    <h1> Visualizating the Most Common Tree Species in San Francisco (2022)</h1>
     <div class="center">
         <h3> Frequency of Tree Species </h3>
         <svg id="barGraph1" width="800" height="500" style="background-color: #EEE;"></svg>
@@ -51,12 +54,15 @@
             clarity, only the tree species with a total number of trees greater than 50 were included
             in the bar graph, which reduced the number of species to just shy of 100. While many species
             remain around the 50 cutoff, there is one clear dominant species. The other top most frequent 
-            species seem to fall off quickly from the maximum. The bar graph on the right shows 
-            the top 15 most frequent tree species in San Francisco. Aside from the one clear outlier, 
-            the frequent species fall between roughly 700 and 2000 in terms of numbers of trees.
+            species seem to fall off quickly from the maximum, falling roughly between 700 and 2000 in terms of numbers of trees.
             </h4>
     </div>
-    <h2 class="center"> Map Visualization </h2>
+    <h3 class="center"> Map of San Francisco and the Top 15 Species </h3>
+    <h4 class="para"> The map and bar graph visualizations below describe the top 15 most 
+        frequent tree species in San Francisco. The colors in the bar graph correspond to a 
+        specific tree species and are the same colors utilized in the map as well. Each dot 
+        corresponds to a specific tree planted, and the size of each dot corresponds to the 
+        size of the tree measured by the diameter at breast height (DBH). </h4>
     <div class="side">
         <div>
             <svg id="sf_map" width="900" height="900"> </svg>
@@ -101,7 +107,7 @@
             }
             // // compare counts after filtering 
             // console.log("original", Object.values(species_counts))
-            // console.log("filtered", Object.values(species_counts_filtered));
+            //console.log("filtered", Object.values(species_counts_filtered));
 
             // creating similar dataset for the top 15 most common species
             let top15 = Object.entries(species_counts_filtered) // create Array of Arrays with [key, value]
@@ -115,7 +121,7 @@
             let colorScale = d3.scaleOrdinal().domain(Object.keys(top15_dictionary))
                                               .range(["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", " #2ca02c", "#98df8a", 
                                               "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", " #c49c94", 
-                                                "#e377c2", "#f7b6d2", "#7f7f7f"]);
+                                                "#e377c2", "#c7c7c7", "#7f7f7f"]);
             
             makeBarGraph(species_counts_filtered, "barGraph1", false);
             makeBarGraph(top15_dictionary, "barGraph2", true);
@@ -240,8 +246,7 @@
                 }
 
                 let tree_data_filtered = tree_data.filter( d => keepPoint(d));
-                console.log(tree_data_filtered);
-                let sizeExtent = d3.extent(tree_data_filtered, d => d['DBH']);                console.log(tree_data_filtered)
+                let sizeExtent = d3.extent(tree_data_filtered, d => d['DBH']);                
 
                 let sizeScale = d3.scaleLinear().domain(sizeExtent).range([1,10]);
                     
@@ -249,7 +254,7 @@
                         .join("circle")
                         .attr("r", d => sizeScale(d['DBH']))
                         .attr("fill", d => colorScale(d['qSpecies']))
-                        .attr("opacity", 0.5)
+                        .attr("opacity", 0.8)
                         .attr("cx", d => d.Position[0])
                         .attr("cy", d => d.Position[1]);
             }
