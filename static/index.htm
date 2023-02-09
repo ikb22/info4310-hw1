@@ -112,7 +112,10 @@
                 top15_dictionary[d[0]] = d[1];
             })
 
-            let colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            let colorScale = d3.scaleOrdinal().domain(Object.keys(top15_dictionary))
+                                              .range(["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", " #2ca02c", "#98df8a", 
+                                              "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", " #c49c94", 
+                                                "#e377c2", "#f7b6d2", "#7f7f7f"]);
             
             makeBarGraph(species_counts_filtered, "barGraph1", false);
             makeBarGraph(top15_dictionary, "barGraph2", true);
@@ -237,9 +240,10 @@
                 }
 
                 let tree_data_filtered = tree_data.filter( d => keepPoint(d));
+                console.log(tree_data_filtered);
                 let sizeExtent = d3.extent(tree_data_filtered, d => d['DBH']);                console.log(tree_data_filtered)
 
-                let sizeScale = d3.scaleRadial().domain(sizeExtent).range([1,8]);
+                let sizeScale = d3.scaleLinear().domain(sizeExtent).range([1,10]);
                     
                 map_area.selectAll("circle").data(tree_data_filtered)
                         .join("circle")
