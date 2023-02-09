@@ -10,35 +10,60 @@
     .gridlines .domain {
         stroke: none;
     }
-    .bargraphs{
-        display: flex;
-        direction: column;
-        justify-content: space-around;
-    }
     h1{
         text-align: center;
+        margin-top: 20px;
+    }
+    .neighborhood {
+        fill: #EEE;
+        stroke: white;
+        stroke-width: 2px;
+    }
+    .center{
+        text-align:center;
+    }
+    h3, h4{
+        font-weight: normal;
+    }
+    .side{
+        display: flex;
+        direction: column;
     }
   </style>
 </head>
 
 <body>
     <h1> Visualizating the Most Common Tree Species in San Francisco </h1>
-    <div class="bargraphs">
+    <div class="center">
+        <h3> Frequency of Tree Species </h3>
+        <svg id="barGraph1" width="800" height="500" style="background-color: #EEE;"></svg>
+        <h4 style="padding-left: 50px; padding-right: 50px;"> The above graph shows the frequency of the number of trees in relation to the 
+            varoius species present in San Francisco. There are a total of 419 different tree species; for 
+            clarity, only the tree species with a total number of trees greater than 50 were included
+            in the bar graph, which reduced the number of species to just shy of 100. While many species
+            remain around the 50 cutoff, there is one clear dominant species. The other top most frequent 
+            species seem to fall off quickly from the maximum. The bar graph on the right shows 
+            the top 15 most frequent tree species in San Francisco. Aside from the one clear outlier, 
+            the frequent species fall between roughly 700 and 2000 in terms of numbers of trees.
+            </h4>
+    </div>
+    <div class="side">
         <div>
-            <svg id="barGraph1" width="800" height="500" style="background-color:lightgrey;"></svg>
-            <h3> Description. </h3>
+            <h3> Top 15 Most Frequent Species </h3>
+            <svg id="barGraph2" width="400" height="630" style="background-color:#EEE;"></svg>
         </div>
         <div>
-            <svg id="barGraph2" width="400" height="600" style="background-color:lightgrey;"></svg>
-            <h3> Description. </h3>
+            <h2> Map Visualization </h2>
+            <svg id="sf_map" width="900" height="900"> </svg>
         </div>
     </div>
     <script>
-
         const createVis = async function() {
             // import dataset and take a look at the data 
             let tree_data = await d3.csv("Street_Tree_List-2022-01-30_FILTERED.csv");
+            const sf_map = await d3.json("SF-Neighborhoods.geo.json");
             console.log(tree_data);
+            console.log(sf_map);
 
             // initial code to see how many species there are (found 419 in total)
             // var species = new Set(d3.map(tree_data, d => d.qSpecies))
@@ -65,33 +90,36 @@
                     species_counts_filtered[key] = value;
                 }
             }
-            // compare counts after filtering 
-            console.log("original", Object.values(species_counts))
-            console.log("filtered", Object.values(species_counts_filtered));
+            // // compare counts after filtering 
+            // console.log("original", Object.values(species_counts))
+            // console.log("filtered", Object.values(species_counts_filtered));
 
+            // creating similar dataset for the top 15 most common species
             let top15 = Object.entries(species_counts_filtered) // create Array of Arrays with [key, value]
                                 .sort(([, a],[, b]) => b-a) // sort by value, descending (b-a)
                                 .slice(0,15)
-            console.log(top15);
             let top15_dictionary = {};
             top15.forEach( d => {
                 top15_dictionary[d[0]] = d[1];
             })
-            console.log("dict", top15_dictionary);
+
+            let colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+            
+            makeBarGraph(species_counts_filtered, "barGraph1", false);
+            makeBarGraph(top15_dictionary, "barGraph2", true);
+            makeMap();
 
             function makeBarGraph(dict, svg_name, extra){
 
                 value_array = Object.values(dict);
                 key_array = Object.keys(dict);
-                console.log(value_array);
-                console.log("keys", key_array);
 
                 // setup for bar chart 
                 let barChart = d3.select("#"+ svg_name);
                 let width = barChart.attr("width");
                 let height = barChart.attr("height");
 
-                const margin = {top: 10, right: 10, bottom: (extra) ? 115 : 10, left: 50};
+                const margin = {top: 10, right: 10, bottom: (extra) ? 150 : 20, left: 65};
                 const chartWidth = width - margin.left - margin.right;
                 const chartHeight = height - margin.top - margin.bottom;
 
@@ -103,7 +131,6 @@
                 let max = valueExtent[1];
 
                 let valueScale = d3.scaleLinear().domain([0,max]).range([chartHeight,0]);
-                // 419 different species 
                 let speciesScale = d3.scaleBand().domain(key_array).range([0, chartWidth])
                                         .padding(0.05);
 
@@ -119,6 +146,22 @@
                     .attr("class", "y gridlines")
                     .attr("transform",`translate(${margin.left-10},${margin.top})`)
                     .call(leftGridlines);
+                
+                annotations.append("text")
+                    .attr("class", "x label")
+                    .text("Tree Species")
+                    .attr("x", width/2)
+                    .attr("text-anchor", "middle")
+                    .style("vertical-align", "text-top")
+                    .attr("y", height - margin.top+5)
+
+                annotations.append("text")
+                    .attr("class", "y label")
+                    .attr("x", - (chartHeight + margin.top) / 2 - 10)
+                    .attr("y", 12)
+                    .attr("text-anchor", "middle")
+                    .attr("transform", "rotate(-90)")
+                    .text("Number of Planted Trees");
 
                 // only apply this to smaller bar chart 
                 if (extra) {
@@ -128,7 +171,6 @@
                         let species_new = d.slice(start+3);
                         tick_labels.push(species_new);
                     })
-                    console.log("ticks", tick_labels);
                     
                     let bottomAxis = d3.axisBottom(speciesScale).tickFormat(function(d,i){ return tick_labels[i] });
 
@@ -144,19 +186,61 @@
                 for (key in dict) {
                     chartArea.append("rect")
                             .attr('class','bar')
-                            .attr("fill", (extra) ? "orange" : "steelblue")
+                            .attr("fill", (extra) ? colorScale(key) : "steelblue")
                             .attr("x", speciesScale(key))
                             .attr("y", valueScale(dict[key]))
                             .attr("height", valueScale(0) - valueScale(dict[key]))
                             .attr("width", speciesScale.bandwidth());
                 }
             }
-            makeBarGraph(species_counts_filtered, "barGraph1", false);
-            makeBarGraph(top15_dictionary, "barGraph2", true);
 
-            
+            function makeMap() {
+                const map = d3.select("#sf_map");
+                const width = map.attr("width");
+                const height = map.attr("height");
+                const margin = { top: 20, right: 20, bottom: 20, left:20};
+                const mapWidth = width - margin.left - margin.right;
+                const mapHeight = height - margin.top - margin.bottom;
+                const map_area = map.append("g")
+                                    .attr("transform","translate("+margin.left+","+margin.top+")");
+
+                var sf_neighborhoods = topojson.feature(sf_map, sf_map.objects.SFNeighborhoods);
+                var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], sf_neighborhoods);
+                var path = d3.geoPath().projection(projection);
+                
+                map_area.selectAll("path.neighborhood").data(sf_neighborhoods.features)
+                        .join("path")
+                        .attr("class", "neighborhood")
+                        .attr("d", path);
+                
+                tree_data.forEach( d => {
+                    d.Position = projection( [d.Longitude, d.Latitude] );
+                });
+
+                let top15_names = Object.keys(top15_dictionary);
+                function keepPoint(point) {
+                    if (top15_names.includes(point['qSpecies'])) {
+                        return true;
+                    } 
+                    else {
+                        return false;
+                    }
+                }
+
+                let tree_data_filtered = tree_data.filter( d => keepPoint(d));
+                let sizeExtent = d3.extent(tree_data_filtered, d => d['DBH']);                console.log(tree_data_filtered)
+
+                let sizeScale = d3.scaleRadial().domain(sizeExtent).range([1,8]);
+                    
+                map_area.selectAll("circle").data(tree_data_filtered)
+                        .join("circle")
+                        .attr("r", d => sizeScale(d['DBH']))
+                        .attr("fill", d => colorScale(d['qSpecies']))
+                        .attr("opacity", 0.5)
+                        .attr("cx", d => d.Position[0])
+                        .attr("cy", d => d.Position[1]);
+            }
         }
-
         createVis();
     </script>
 
