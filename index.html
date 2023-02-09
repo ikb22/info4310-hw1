@@ -3,17 +3,158 @@
   <title>INFO 4310 Homework 1 </title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://d3js.org/topojson.v3.min.js"></script>
+  <style>
+    .gridlines line {
+        stroke: #bbb;
+    }
+    .gridlines .domain {
+        stroke: none;
+    }
+    .bargraphs{
+        display: flex;
+        direction: column;
+        justify-content: space-around;
+    }
+    h1{
+        text-align: center;
+    }
+  </style>
 </head>
 
 <body>
-    <h1> Trees in San Francisco </h1>
-    <svg id="vis1" width="800" height="500"></svg>
+    <h1> Visualizating the Most Common Tree Species in San Francisco </h1>
+    <div class="bargraphs">
+        <div>
+            <svg id="barGraph1" width="800" height="500" style="background-color:lightgrey;"></svg>
+            <h3> Description. </h3>
+        </div>
+        <div>
+            <svg id="barGraph2" width="400" height="600" style="background-color:lightgrey;"></svg>
+            <h3> Description. </h3>
+        </div>
+    </div>
     <script>
 
         const createVis = async function() {
+            // import dataset and take a look at the data 
             let tree_data = await d3.csv("Street_Tree_List-2022-01-30_FILTERED.csv");
             console.log(tree_data);
 
+            // initial code to see how many species there are (found 419 in total)
+            // var species = new Set(d3.map(tree_data, d => d.qSpecies))
+            // console.log('the number of species are:', species.size);
+
+            // find count of the number of species for each tree by creating a dictionary and storing the values
+            let species_counts = {};
+            tree_data.forEach( d => {
+                let species = d['qSpecies'];
+                if (species in species_counts) {
+                    // increment counter by 1
+                    species_counts[species] += 1;
+                }
+                else {
+                    // start the counter at 1 if the species has not yet been found
+                    species_counts[species] = 1;
+                }
+            });
+            // remove small values from bar chart 
+            let species_counts_filtered = {};
+            for (key in species_counts) {
+                let value = species_counts[key];
+                if (value > 50){
+                    species_counts_filtered[key] = value;
+                }
+            }
+            // compare counts after filtering 
+            console.log("original", Object.values(species_counts))
+            console.log("filtered", Object.values(species_counts_filtered));
+
+            let top15 = Object.entries(species_counts_filtered) // create Array of Arrays with [key, value]
+                                .sort(([, a],[, b]) => b-a) // sort by value, descending (b-a)
+                                .slice(0,15)
+            console.log(top15);
+            let top15_dictionary = {};
+            top15.forEach( d => {
+                top15_dictionary[d[0]] = d[1];
+            })
+            console.log("dict", top15_dictionary);
+
+            function makeBarGraph(dict, svg_name, extra){
+
+                value_array = Object.values(dict);
+                key_array = Object.keys(dict);
+                console.log(value_array);
+                console.log("keys", key_array);
+
+                // setup for bar chart 
+                let barChart = d3.select("#"+ svg_name);
+                let width = barChart.attr("width");
+                let height = barChart.attr("height");
+
+                const margin = {top: 10, right: 10, bottom: (extra) ? 115 : 10, left: 50};
+                const chartWidth = width - margin.left - margin.right;
+                const chartHeight = height - margin.top - margin.bottom;
+
+                let annotations = barChart.append("g").attr("id","annotations");
+                let chartArea = barChart.append("g").attr("id","points")
+                                .attr("transform",`translate(${margin.left},${margin.top})`);
+
+                let valueExtent = d3.extent(value_array);
+                let max = valueExtent[1];
+
+                let valueScale = d3.scaleLinear().domain([0,max]).range([chartHeight,0]);
+                // 419 different species 
+                let speciesScale = d3.scaleBand().domain(key_array).range([0, chartWidth])
+                                        .padding(0.05);
+
+                let leftAxis = d3.axisLeft(valueScale)
+                let leftGridlines = d3.axisLeft(valueScale)
+                                        .tickSize(-chartWidth-10)
+                                        .tickFormat("")
+                annotations.append("g")
+                    .attr("class", "y axis")
+                    .attr("transform",`translate(${margin.left-10},${margin.top})`)
+                    .call(leftAxis)
+                annotations.append("g")
+                    .attr("class", "y gridlines")
+                    .attr("transform",`translate(${margin.left-10},${margin.top})`)
+                    .call(leftGridlines);
+
+                // only apply this to smaller bar chart 
+                if (extra) {
+                    let tick_labels = [];
+                    key_array.forEach( (d,i) => {
+                        let start = d.indexOf("::");
+                        let species_new = d.slice(start+3);
+                        tick_labels.push(species_new);
+                    })
+                    console.log("ticks", tick_labels);
+                    
+                    let bottomAxis = d3.axisBottom(speciesScale).tickFormat(function(d,i){ return tick_labels[i] });
+
+                    annotations.append("g")
+                                .attr("class", "x axis")
+                                .attr("transform",`translate(${margin.left},${chartHeight+margin.top})`)
+                                .call(bottomAxis)
+                                .selectAll("text") 
+                                .style("text-anchor", "end")
+                                .attr("transform", "translate(-10, 2) rotate(-65)");
+                }
+
+                for (key in dict) {
+                    chartArea.append("rect")
+                            .attr('class','bar')
+                            .attr("fill", (extra) ? "orange" : "steelblue")
+                            .attr("x", speciesScale(key))
+                            .attr("y", valueScale(dict[key]))
+                            .attr("height", valueScale(0) - valueScale(dict[key]))
+                            .attr("width", speciesScale.bandwidth());
+                }
+            }
+            makeBarGraph(species_counts_filtered, "barGraph1", false);
+            makeBarGraph(top15_dictionary, "barGraph2", true);
+
+            
         }
 
         createVis();
